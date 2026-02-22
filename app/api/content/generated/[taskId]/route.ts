@@ -10,7 +10,7 @@ import WeeklyGoalModel from '@/app/api/models/WeeklyGoalModel';
  */
 export async function GET(
     request: Request,
-    { params }: { params: { taskId: string } }
+    { params }: { params: Promise<{ taskId: string }> }
 ) {
     try {
         const { userId } = await auth();
@@ -22,7 +22,7 @@ export async function GET(
             );
         }
 
-        const { taskId } = params;
+        const { taskId } = await params;
 
         await dbConnect();
 
