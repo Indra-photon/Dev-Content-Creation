@@ -92,7 +92,7 @@ export async function POST(
         // Check if task is locked
         if (dailyTask.status === 'locked') {
             return NextResponse.json(
-                { error: `This task is locked. Complete Day ${dailyTask.dayNumber - 1} first.` },
+                { error: dailyTask.dayNumber === 1 ? 'This task is locked.' : `This task is locked. Complete Day ${dailyTask.dayNumber - 1} first.` },
                 { status: 400 }
             );
         }
