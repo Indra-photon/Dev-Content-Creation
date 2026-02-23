@@ -122,7 +122,7 @@ export default function ExamplesPage() {
         <ExamplePostForm
           onSuccess={handleFormSuccess}
           onCancel={handleCancel}
-          initialData={editingPost || undefined}
+          initialData={editingPost ? { ...editingPost, id: editingPost._id } : undefined}
         />
       )}
 
