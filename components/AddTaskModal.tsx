@@ -112,15 +112,16 @@ export default function AddTaskModal({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            <Heading as="h2" className="text-gray-900 text-2xl">
+            {/* <Heading as="h2" className="text-gray-900 text-2xl">
               Add Daily Task
-            </Heading>
+            </Heading> */}
+            Add Daily Task
           </DialogTitle>
-          <DialogDescription>
+          {/* <DialogDescription>
             <Paragraph variant="muted">
               Create your next daily task. Remember: you must complete this before creating another.
             </Paragraph>
-          </DialogDescription>
+          </DialogDescription> */}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
