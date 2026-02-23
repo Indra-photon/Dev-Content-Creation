@@ -1,65 +1,96 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { Heading } from '@/components/Heading';
+import { Paragraph } from '@/components/Paragraph';
+import { Container } from '@/components/Container';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { Target, Lock, Sparkles, TrendingUp } from 'lucide-react';
 
-export default function Home() {
+export default async function HomePage() {
+  const { userId } = await auth();
+
+  // Redirect authenticated users to dashboard
+  if (userId) {
+    redirect('/dashboard/goals');
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-violet-50/30">
+      {/* Hero Section */}
+      <Container className="py-20">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+            <Sparkles className="h-4 w-4" />
+            Stay Focused. Build Consistency.
+          </div>
+          
+          <Heading as="h1" className="text-gray-900">
+            Master Skills with
+            <span className="block mt-2 bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+              Focused Weekly Goals
+            </span>
+          </Heading>
+          
+          <Paragraph className="max-w-2xl mx-auto">
+            A productivity system that enforces focus. Complete 7 daily tasks before moving to the next week. 
+            No skipping, no distractions.
+          </Paragraph>
+
+          <div className="flex gap-4 justify-center">
+            <Link href="/sign-up">
+              <Button size="lg" className="text-lg px-8">
+                Get Started Free
+              </Button>
+            </Link>
+            <Link href="/sign-in">
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                Sign In
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Features */}
+        <div className="grid md:grid-cols-3 gap-6 mt-20 max-w-5xl mx-auto">
+          <Card className="p-6 border-2 hover:border-blue-200 transition-colors">
+            <div className="p-3 w-fit rounded-lg bg-blue-100 text-blue-600 mb-4">
+              <Lock className="h-6 w-6" />
+            </div>
+            <Heading as="h3" className="text-gray-900 text-lg mb-2">
+              Sequential Lock System
+            </Heading>
+            <Paragraph variant="muted">
+              Day 2 unlocks only after Day 1 is complete. Forces you to finish what you start.
+            </Paragraph>
+          </Card>
+
+          <Card className="p-6 border-2 hover:border-violet-200 transition-colors">
+            <div className="p-3 w-fit rounded-lg bg-violet-100 text-violet-600 mb-4">
+              <Target className="h-6 w-6" />
+            </div>
+            <Heading as="h3" className="text-gray-900 text-lg mb-2">
+              Weekly Focus
+            </Heading>
+            <Paragraph variant="muted">
+              Can&apos;t create Week 2 until Week 1 is 100% done. One week at a time.
+            </Paragraph>
+          </Card>
+
+          <Card className="p-6 border-2 hover:border-green-200 transition-colors">
+            <div className="p-3 w-fit rounded-lg bg-green-100 text-green-600 mb-4">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <Heading as="h3" className="text-gray-900 text-lg mb-2">
+              AI Content Generation
+            </Heading>
+            <Paragraph variant="muted">
+              Auto-generate social posts from your work. Share your progress effortlessly.
+            </Paragraph>
+          </Card>
         </div>
-      </main>
+      </Container>
     </div>
   );
 }
