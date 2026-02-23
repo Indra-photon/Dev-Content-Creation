@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paragraph } from '@/components/Paragraph';
 import {
-  Lock,
   Circle,
   CheckCircle2,
   ExternalLink,
@@ -18,7 +17,7 @@ interface Task {
   _id: string;
   description: string;
   resources: Array<{ url: string; title?: string }>;
-  status: 'locked' | 'active' | 'complete';
+  status: 'active' | 'complete';
   scheduledDate: string;
   goalType: 'learning' | 'product';
   completionData?: {
@@ -36,14 +35,6 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
   const router = useRouter();
 
   const statusConfig = {
-    locked: {
-      icon: Lock,
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-100',
-      borderColor: 'border-gray-200',
-      badge: 'Locked',
-      badgeClass: 'bg-gray-100 text-gray-600',
-    },
     active: {
       icon: Circle,
       color: 'text-blue-600',
@@ -67,6 +58,7 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -82,7 +74,7 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
   };
 
   return (
-    <Card className={`p-6 border-2 ${config.borderColor} transition-all`}>
+    <Card className={`p-6 border-2 ${config.borderColor} transition-all hover:shadow-md`}>
       <div className="flex items-start gap-4">
         {/* Status Icon */}
         <div className={`p-2 rounded-full ${config.bgColor} flex-shrink-0`}>
@@ -94,9 +86,9 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
           {/* Header */}
           <div className="flex items-start justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-gray-500">
+              <div className="flex items-center gap-2 text-gray-700 font-medium">
                 <CalendarIcon className="h-4 w-4" />
-                <Paragraph variant="small">
+                <Paragraph variant="default">
                   {formatDate(task.scheduledDate)}
                 </Paragraph>
               </div>
@@ -148,14 +140,6 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
-            {task.status === 'locked' && (
-              <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 flex-1">
-                <Paragraph variant="small" className="text-gray-600">
-                  🔒 Complete previous task to unlock
-                </Paragraph>
-              </div>
-            )}
-
             {task.status === 'active' && (
               <Button onClick={handleComplete} className="gap-2">
                 <CheckCircle2 className="h-4 w-4" />

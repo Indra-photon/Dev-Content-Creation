@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import DailyTaskModel from '@/app/api/models/DailyTaskModel';
 import WeeklyGoalModel from '@/app/api/models/WeeklyGoalModel';
-import { getOrCreateWeekForTask, getNextTaskNumber, canCreateNextTask } from '@/lib/weekHelpers';
+import { getOrCreateWeekForTask, canCreateTaskOnDate } from '@/lib/weekHelpers';
 
 export async function POST(request: Request) {
     try {
@@ -35,32 +35,39 @@ export async function POST(request: Request) {
 
         await dbConnect();
 
-        // Check if user can create next task
-        const canCreate = await canCreateNextTask(userId);
+        // Use provided date or default to today
+        const taskDate = scheduledDate || new Date().toISOString().split('T')[0];
+
+        // Check if user can create task on this date
+        const canCreate = await canCreateTaskOnDate(userId, taskDate);
         if (!canCreate.canCreate) {
             return NextResponse.json(
                 { 
                     error: canCreate.reason,
-                    lastTask: canCreate.lastTask
+                    incompleteTasks: canCreate.incompleteTasks,
+                    previousDate: canCreate.previousDate
                 },
                 { status: 400 }
             );
         }
 
-        // Get next task number
-        const taskNumber = await getNextTaskNumber(userId);
+        // Get or create weekly goal (auto-managed in background)
+        const weeklyGoal = await getOrCreateWeekForTask(userId, type);
 
-        // Get or create weekly goal (auto-managed)
-        const weeklyGoal = await getOrCreateWeekForTask(userId, taskNumber, type);
+        // Count tasks on this specific date
+        const tasksOnDate = await DailyTaskModel.countDocuments({
+            weeklyGoalId: weeklyGoal._id,
+            scheduledDate: {
+                $gte: new Date(taskDate),
+                $lt: new Date(new Date(taskDate).getTime() + 24 * 60 * 60 * 1000)
+            }
+        });
 
-        // Determine day number within the week
-        const dayNumber = ((taskNumber - 1) % 7) + 1;
+        // All tasks on the same day start as "active" (no locks within a day)
+        const initialStatus = 'active';
 
-        // Determine initial status (Day 1 of any week is active, rest are locked)
-        const initialStatus = dayNumber === 1 ? 'active' : 'locked';
-
-        // Use provided date or default to today
-        const taskDate = scheduledDate ? new Date(scheduledDate) : new Date();
+        // Day number is just for reference (not used for locking)
+        const dayNumber = tasksOnDate + 1;
 
         // Create the daily task
         const dailyTask = await DailyTaskModel.create({
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
             description,
             resources: resources || [],
             status: initialStatus,
-            scheduledDate: taskDate,
+            scheduledDate: new Date(taskDate),
         });
 
         // Add task reference to weekly goal
@@ -82,7 +89,6 @@ export async function POST(request: Request) {
             success: true,
             data: {
                 ...dailyTask.toObject(),
-                taskNumber,
                 goalType: type,
             }
         }, { status: 201 });

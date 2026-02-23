@@ -17,7 +17,7 @@ interface DailyTask {
   dayNumber: number;
   description: string;
   resources: Array<{ url: string; title?: string }>;
-  status: 'locked' | 'active' | 'complete';
+  status: 'active' | 'complete';
   scheduledDate: string;
   goalType: 'learning' | 'product';
   completionData?: {

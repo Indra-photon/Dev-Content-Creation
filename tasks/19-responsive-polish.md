@@ -100,69 +100,72 @@ import WeeklyGoalModel from '@/app/api/models/WeeklyGoalModel';
 import DailyTaskModel from '@/app/api/models/DailyTaskModel';
 
 /**
- * Get or create the appropriate weekly goal for the next task
- * Weeks are auto-managed in the background
+ * Get or create the appropriate weekly goal for a task
+ * Weeks are auto-managed in the background (every 7 unique dates = 1 week)
  */
 export async function getOrCreateWeekForTask(
   userId: string,
-  taskNumber: number,
   type: 'learning' | 'product'
 ) {
-  const weekNumber = Math.ceil(taskNumber / 7);
-  const dayInWeek = ((taskNumber - 1) % 7) + 1;
-
-  // Try to find existing week
+  // Try to find existing active week
   let week = await WeeklyGoalModel.findOne({
     clerk_id: userId,
     status: 'active'
   });
 
-  // If no active week or it's full, check if we need a new week
-  if (!week || dayInWeek === 1) {
-    const taskCount = await DailyTaskModel.countDocuments({
-      weeklyGoalId: week?._id
+  // If no active week, create one
+  if (!week) {
+    const weekCount = await WeeklyGoalModel.countDocuments({
+      clerk_id: userId
     });
 
-    // Create new week if current is full (7 tasks)
-    if (!week || taskCount === 7) {
-      week = await WeeklyGoalModel.create({
-        clerk_id: userId,
-        title: `Week ${weekNumber}`,
-        type,
-        status: 'active',
-        startDate: new Date(),
-        dailyTasks: []
-      });
-    }
+    week = await WeeklyGoalModel.create({
+      clerk_id: userId,
+      title: `Week ${weekCount + 1}`,
+      type,
+      status: 'active',
+      startDate: new Date(),
+      dailyTasks: []
+    });
   }
 
   return week;
 }
 
 /**
- * Get the next available task number for a user
+ * Get all unique dates that have tasks
  */
-export async function getNextTaskNumber(userId: string): Promise<number> {
+async function getUniqueDatesWithTasks(userId: string): Promise<string[]> {
   const weeklyGoals = await WeeklyGoalModel.find({
     clerk_id: userId
   }).select('_id');
 
   const weeklyGoalIds = weeklyGoals.map(g => g._id);
 
-  const taskCount = await DailyTaskModel.countDocuments({
+  const tasks = await DailyTaskModel.find({
     weeklyGoalId: { $in: weeklyGoalIds }
-  });
+  }).select('scheduledDate').sort({ scheduledDate: 1 });
 
-  return taskCount + 1;
+  // Get unique dates (YYYY-MM-DD format)
+  const uniqueDates = [...new Set(
+    tasks.map(t => new Date(t.scheduledDate).toISOString().split('T')[0])
+  )];
+
+  return uniqueDates;
 }
 
 /**
- * Check if user can create next task (previous must be complete)
+ * Check if user can create task on a new date
+ * Rule: All tasks from previous date must be complete before creating tasks on next date
  */
-export async function canCreateNextTask(userId: string): Promise<{
+export async function canCreateTaskOnDate(
+  userId: string, 
+  newDate: string // YYYY-MM-DD format
+): Promise<{
   canCreate: boolean;
   reason?: string;
-  lastTask?: any;
+  incompleteTasks?: any[];
+  previousDate?: string;
 }> {
   const weeklyGoals = await WeeklyGoalModel.find({
     clerk_id: userId
@@ -170,32 +173,83 @@ export async function canCreateNextTask(userId: string): Promise<{
 
   const weeklyGoalIds = weeklyGoals.map(g => g._id);
 
-  // Get the latest task
-  const lastTask = await DailyTaskModel.findOne({
+  // Get all tasks
+  const allTasks = await DailyTaskModel.find({
     weeklyGoalId: { $in: weeklyGoalIds }
-  }).sort({ createdAt: -1 });
+  }).sort({ scheduledDate: 1 });
 
-  // If no tasks, can create first one
-  if (!lastTask) {
+  // If no tasks exist, can create on any date
+  if (allTasks.length === 0) {
     return { canCreate: true };
   }
 
-  // Check if last task is complete
-  if (lastTask.status !== 'complete') {
+  // Get unique dates with tasks
+  const uniqueDates = [...new Set(
+    allTasks.map(t => new Date(t.scheduledDate).toISOString().split('T')[0])
+  )].sort();
+
+  const newDateObj = new Date(newDate);
+  
+  // Check if creating task on existing date
+  if (uniqueDates.includes(newDate)) {
+    // Can always add more tasks to an existing date
+    return { canCreate: true };
+  }
+
+  // Creating task on a NEW date - check if all tasks from previous dates are complete
+  const datesBeforeNew = uniqueDates.filter(d => new Date(d) < newDateObj);
+  
+  if (datesBeforeNew.length === 0) {
+    // Creating task before all existing dates, allow it
+    return { canCreate: true };
+  }
+
+  // Get the most recent date before the new date
+  const previousDate = datesBeforeNew[datesBeforeNew.length - 1];
+
+  // Check if all tasks from that date are complete
+  const tasksOnPreviousDate = allTasks.filter(t => {
+    const taskDate = new Date(t.scheduledDate).toISOString().split('T')[0];
+    return taskDate === previousDate;
+  });
+
+  const incompleteTasks = tasksOnPreviousDate.filter(t => t.status !== 'complete');
+
+  if (incompleteTasks.length > 0) {
     return {
       canCreate: false,
-      reason: `Complete your previous task first (created ${new Date(lastTask.createdAt).toLocaleDateString()})`,
-      lastTask
+      reason: `Complete all tasks from ${new Date(previousDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} first (${tasksOnPreviousDate.length - incompleteTasks.length}/${tasksOnPreviousDate.length} done)`,
+      incompleteTasks,
+      previousDate
     };
   }
 
   return { canCreate: true };
 }
+
+/**
+ * Get the latest date with tasks
+ */
+export async function getLatestTaskDate(userId: string): Promise<string | null> {
+  const weeklyGoals = await WeeklyGoalModel.find({
+    clerk_id: userId
+  }).select('_id');
+
+  const weeklyGoalIds = weeklyGoals.map(g => g._id);
+
+  const latestTask = await DailyTaskModel.findOne({
+    weeklyGoalId: { $in: weeklyGoalIds }
+  }).sort({ scheduledDate: -1 });
+
+  if (!latestTask) return null;
+
+  return new Date(latestTask.scheduledDate).toISOString().split('T')[0];
+}
 ```
 
 ---
 
-## 3. Update Daily Tasks API for Auto-Week Creation
+## 3. Update Daily Tasks API for Day-to-Day Locking
 
 **File:** `app/api/daily-tasks/route.ts` (update POST method)
 
@@ -205,7 +259,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import DailyTaskModel from '@/app/api/models/DailyTaskModel';
 import WeeklyGoalModel from '@/app/api/models/WeeklyGoalModel';
-import { getOrCreateWeekForTask, getNextTaskNumber, canCreateNextTask } from '@/lib/weekHelpers';
+import { getOrCreateWeekForTask, canCreateTaskOnDate } from '@/lib/weekHelpers';
 
 export async function POST(request: Request) {
   try {
@@ -237,32 +291,39 @@ export async function POST(request: Request) {
 
     await dbConnect();
 
-    // Check if user can create next task
-    const canCreate = await canCreateNextTask(userId);
+    // Use provided date or default to today
+    const taskDate = scheduledDate || new Date().toISOString().split('T')[0];
+
+    // Check if user can create task on this date
+    const canCreate = await canCreateTaskOnDate(userId, taskDate);
     if (!canCreate.canCreate) {
       return NextResponse.json(
         { 
           error: canCreate.reason,
-          lastTask: canCreate.lastTask
+          incompleteTasks: canCreate.incompleteTasks,
+          previousDate: canCreate.previousDate
         },
         { status: 400 }
       );
     }
 
-    // Get next task number
-    const taskNumber = await getNextTaskNumber(userId);
+    // Get or create weekly goal (auto-managed in background)
+    const weeklyGoal = await getOrCreateWeekForTask(userId, type);
 
-    // Get or create weekly goal (auto-managed)
-    const weeklyGoal = await getOrCreateWeekForTask(userId, taskNumber, type);
+    // Count tasks on this specific date
+    const tasksOnDate = await DailyTaskModel.countDocuments({
+      weeklyGoalId: weeklyGoal._id,
+      scheduledDate: {
+        $gte: new Date(taskDate),
+        $lt: new Date(new Date(taskDate).getTime() + 24 * 60 * 60 * 1000)
+      }
+    });
 
-    // Determine day number within the week
-    const dayNumber = ((taskNumber - 1) % 7) + 1;
+    // All tasks on the same day start as "active" (no locks within a day)
+    const initialStatus = 'active';
 
-    // Determine initial status (Day 1 of any week is active, rest are locked)
-    const initialStatus = dayNumber === 1 ? 'active' : 'locked';
-
-    // Use provided date or default to today
-    const taskDate = scheduledDate ? new Date(scheduledDate) : new Date();
+    // Day number is just for reference (not used for locking)
+    const dayNumber = tasksOnDate + 1;
 
     // Create the daily task
     const dailyTask = await DailyTaskModel.create({
@@ -271,7 +332,7 @@ export async function POST(request: Request) {
       description,
       resources: resources || [],
       status: initialStatus,
-      scheduledDate: taskDate,
+      scheduledDate: new Date(taskDate),
     });
 
     // Add task reference to weekly goal
@@ -284,7 +345,6 @@ export async function POST(request: Request) {
       success: true,
       data: {
         ...dailyTask.toObject(),
-        taskNumber,
         goalType: type,
       }
     }, { status: 201 });
@@ -480,7 +540,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paragraph } from '@/components/Paragraph';
 import {
-  Lock,
   Circle,
   CheckCircle2,
   ExternalLink,
@@ -493,7 +552,7 @@ interface Task {
   _id: string;
   description: string;
   resources: Array<{ url: string; title?: string }>;
-  status: 'locked' | 'active' | 'complete';
+  status: 'active' | 'complete';
   scheduledDate: string;
   goalType: 'learning' | 'product';
   completionData?: {
@@ -511,14 +570,6 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
   const router = useRouter();
 
   const statusConfig = {
-    locked: {
-      icon: Lock,
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-100',
-      borderColor: 'border-gray-200',
-      badge: 'Locked',
-      badgeClass: 'bg-gray-100 text-gray-600',
-    },
     active: {
       icon: Circle,
       color: 'text-blue-600',
@@ -542,6 +593,7 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -549,8 +601,6 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
   };
 
   const handleComplete = () => {
-    // Navigate to completion page (we'll need to find weeklyGoalId)
-    // For now, just show a toast
     router.push(`/dashboard/tasks/${task._id}/complete`);
   };
 
@@ -559,7 +609,7 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
   };
 
   return (
-    <Card className={`p-6 border-2 ${config.borderColor} transition-all`}>
+    <Card className={`p-6 border-2 ${config.borderColor} transition-all hover:shadow-md`}>
       <div className="flex items-start gap-4">
         {/* Status Icon */}
         <div className={`p-2 rounded-full ${config.bgColor} flex-shrink-0`}>
@@ -571,9 +621,9 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
           {/* Header */}
           <div className="flex items-start justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-gray-500">
+              <div className="flex items-center gap-2 text-gray-700 font-medium">
                 <CalendarIcon className="h-4 w-4" />
-                <Paragraph variant="small">
+                <Paragraph variant="default">
                   {formatDate(task.scheduledDate)}
                 </Paragraph>
               </div>
@@ -625,14 +675,6 @@ export default function TaskListCard({ task, onComplete }: TaskListCardProps) {
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
-            {task.status === 'locked' && (
-              <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 flex-1">
-                <Paragraph variant="small" className="text-gray-600">
-                  🔒 Complete previous task to unlock
-                </Paragraph>
-              </div>
-            )}
-
             {task.status === 'active' && (
               <Button onClick={handleComplete} className="gap-2">
                 <CheckCircle2 className="h-4 w-4" />
@@ -1038,7 +1080,7 @@ async function migrate() {
 migrate();
 ```
 
-<!-- ---
+---
 
 ## Git Commit
 
@@ -1071,7 +1113,7 @@ git commit -m "refactor: change to daily task-focused UI
 - Keep content generation feature"
 
 git push origin your-branch-name
-``` -->
+```
 
 ---
 
