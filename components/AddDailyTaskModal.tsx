@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,16 @@ interface AddDailyTaskModalProps {
   onSuccess: () => void;
 }
 
+const dayGuidance = {
+  1: "Start with fundamentals. What's the core concept you need to understand?",
+  2: "Build on Day 1. What's the next logical step?",
+  3: "Time to practice. What hands-on exercise can you do?",
+  4: "Go deeper. What advanced aspect should you explore?",
+  5: "Apply your knowledge. What can you build with what you've learned?",
+  6: "Optimize and refine. How can you improve your approach?",
+  7: "Wrap it up. What final piece completes your week?",
+};
+
 export default function AddDailyTaskModal({
   open,
   onOpenChange,
@@ -38,19 +48,54 @@ export default function AddDailyTaskModal({
     { url: '', title: '' }
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const validateUrl = (url: string): boolean => {
+    if (!url) return true; // Optional field
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleAddResource = () => {
+    if (resources.length >= 5) return;
     setResources([...resources, { url: '', title: '' }]);
+    setHasChanges(true);
   };
 
   const handleRemoveResource = (index: number) => {
     setResources(resources.filter((_, i) => i !== index));
+    setHasChanges(true);
   };
 
   const handleResourceChange = (index: number, field: 'url' | 'title', value: string) => {
     const updated = [...resources];
     updated[index][field] = value;
     setResources(updated);
+    setHasChanges(true);
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    setHasChanges(true);
+  };
+
+  const handleClose = (open: boolean) => {
+    if (!open && hasChanges) {
+      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to close?');
+      if (!confirmed) return;
+    }
+    
+    if (!open) {
+      setDescription('');
+      setResources([{ url: '', title: '' }]);
+      setHasChanges(false);
+    }
+    
+    onOpenChange(open);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,6 +103,18 @@ export default function AddDailyTaskModal({
 
     if (!description.trim()) {
       toast.error('Please enter a task description');
+      return;
+    }
+
+    if (description.length < 10) {
+      toast.error('Description must be at least 10 characters');
+      return;
+    }
+
+    // Validate URLs
+    const invalidUrls = resources.filter(r => r.url && !validateUrl(r.url));
+    if (invalidUrls.length > 0) {
+      toast.error('Please enter valid URLs (must start with http:// or https://)');
       return;
     }
 
@@ -87,6 +144,7 @@ export default function AddDailyTaskModal({
       toast.success(`Day ${dayNumber} task created!`);
       setDescription('');
       setResources([{ url: '', title: '' }]);
+      setHasChanges(false);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -97,8 +155,24 @@ export default function AddDailyTaskModal({
     }
   };
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + Enter to submit
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit(e as any);
+      }
+    };
+
+    if (open) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [open, description, resources, weeklyGoalId, dayNumber, onSuccess, onOpenChange]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -113,6 +187,13 @@ export default function AddDailyTaskModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Day Guidance */}
+        <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <Paragraph variant="small" className="text-blue-700">
+            💡 {dayGuidance[dayNumber as keyof typeof dayGuidance]}
+          </Paragraph>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
           {/* Description */}
           <div className="space-y-2">
@@ -120,14 +201,21 @@ export default function AddDailyTaskModal({
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="e.g., Learn useState and useEffect hooks"
               rows={3}
               className="resize-none"
             />
-            <Paragraph variant="small" className="text-gray-500">
-              What will you learn or build today?
-            </Paragraph>
+            <div className="flex justify-between items-center">
+              <Paragraph variant="small" className="text-gray-500">
+                What will you learn or build today?
+              </Paragraph>
+              <Paragraph variant="small" className={
+                description.length < 10 ? 'text-red-500' : 'text-gray-500'
+              }>
+                {description.length} characters
+              </Paragraph>
+            </div>
           </div>
 
           {/* Resources */}
@@ -140,11 +228,18 @@ export default function AddDailyTaskModal({
                 size="sm"
                 onClick={handleAddResource}
                 className="gap-2"
+                disabled={resources.length >= 5}
               >
                 <Plus className="h-3 w-3" />
                 Add Resource
               </Button>
             </div>
+
+            {resources.length >= 5 && (
+              <Paragraph variant="small" className="text-amber-600">
+                Maximum 5 resources per task
+              </Paragraph>
+            )}
 
             <div className="space-y-3">
               {resources.map((resource, index) => (
@@ -154,7 +249,17 @@ export default function AddDailyTaskModal({
                       placeholder="URL (e.g., https://react.dev/...)"
                       value={resource.url}
                       onChange={(e) => handleResourceChange(index, 'url', e.target.value)}
+                      className={
+                        resource.url && !validateUrl(resource.url)
+                          ? 'border-red-500 focus-visible:ring-red-500'
+                          : ''
+                      }
                     />
+                    {resource.url && !validateUrl(resource.url) && (
+                      <Paragraph variant="small" className="text-red-500">
+                        Invalid URL format
+                      </Paragraph>
+                    )}
                     <Input
                       placeholder="Title (optional)"
                       value={resource.title || ''}
@@ -179,16 +284,23 @@ export default function AddDailyTaskModal({
         </form>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create Task'}
-          </Button>
+          <div className="flex items-center justify-between w-full">
+            <Paragraph variant="small" className="text-gray-500 hidden sm:block">
+              Press Cmd/Ctrl + Enter to submit
+            </Paragraph>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleClose(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create Task'}
+              </Button>
+            </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

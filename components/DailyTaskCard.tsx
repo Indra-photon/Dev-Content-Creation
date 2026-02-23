@@ -44,27 +44,37 @@ export default function DailyTaskCard({
 }: DailyTaskCardProps) {
   // Task doesn't exist yet
   if (!task) {
+    const canAdd = onAddTask !== undefined;
+    
     return (
-      <Card className="p-6 border-dashed bg-gray-50/50">
+      <Card className={`p-6 ${canAdd ? 'border-dashed bg-gray-50/50 hover:bg-gray-100/50 transition-colors' : 'border-2 border-gray-200 bg-gray-50'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-gray-200">
-              <Circle className="h-5 w-5 text-gray-400" />
+            <div className={`p-2 rounded-full ${canAdd ? 'bg-gray-200' : 'bg-red-100'}`}>
+              {canAdd ? (
+                <Circle className="h-5 w-5 text-gray-400" />
+              ) : (
+                <Lock className="h-5 w-5 text-red-400" />
+              )}
             </div>
             <div>
               <Paragraph className="font-semibold text-gray-900">
                 Day {dayNumber}
               </Paragraph>
               <Paragraph variant="small" className="text-gray-500">
-                Not created yet
+                {canAdd ? 'Ready to create' : `Create Day ${dayNumber - 1} first`}
               </Paragraph>
             </div>
           </div>
-          {onAddTask && (
+          {canAdd ? (
             <Button onClick={onAddTask} variant="outline" className="gap-2">
               <Plus className="h-4 w-4" />
               Add Task
             </Button>
+          ) : (
+            <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
+              Blocked
+            </Badge>
           )}
         </div>
       </Card>
