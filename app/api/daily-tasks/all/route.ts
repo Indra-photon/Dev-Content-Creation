@@ -32,11 +32,15 @@ export async function GET(request: Request) {
     .sort({ createdAt: 1 }); // Chronological order
 
     // Enrich with goal type
-    const enrichedTasks = tasks.map(task => ({
-      ...task.toObject(),
-      goalType: task.weeklyGoalId?.type,
-      goalTitle: task.weeklyGoalId?.title,
-    }));
+    const enrichedTasks = tasks.map(task => {
+      const taskObj = task.toObject();
+      const populatedGoal = task.weeklyGoalId as any;
+      return {
+        ...taskObj,
+        goalType: populatedGoal?.type,
+        goalTitle: populatedGoal?.title,
+      };
+    });
 
     return NextResponse.json({
       success: true,
