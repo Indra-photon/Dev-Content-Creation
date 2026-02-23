@@ -1,5 +1,5 @@
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Paragraph } from '@/components/Paragraph';
 import { LucideIcon } from 'lucide-react';
 
 interface EmptyStateProps {
@@ -12,26 +12,26 @@ interface EmptyStateProps {
   };
 }
 
-export default function EmptyState({ 
-  icon: Icon, 
-  title, 
-  description, 
-  action 
+export default function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
 }: EmptyStateProps) {
   return (
-    <Card className="p-12 text-center border-dashed">
-      <div className="mx-auto w-fit p-4 rounded-full bg-muted/50 mb-4">
-        <Icon className="h-8 w-8 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="p-4 rounded-full bg-gray-100 mb-4">
+        <Icon className="h-8 w-8 text-gray-500" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <Paragraph variant="muted" className="max-w-md mb-6">
         {description}
-      </p>
+      </Paragraph>
       {action && (
         <Button onClick={action.onClick} size="lg">
           {action.label}
         </Button>
       )}
-    </Card>
+    </div>
   );
 }

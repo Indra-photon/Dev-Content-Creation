@@ -17,6 +17,7 @@ export interface IDailyTask extends Document {
     description: string;
     resources: Resource[];
     status: 'locked' | 'active' | 'complete';
+    scheduledDate: Date;
     completionData?: CompletionData;
     createdAt: Date;
     updatedAt: Date;
@@ -54,6 +55,10 @@ const DailyTaskSchema = new Schema<IDailyTask>(
             type: String,
             enum: ['locked', 'active', 'complete'],
             default: 'locked'
+        },
+        scheduledDate: {
+            type: Date,
+            default: Date.now
         },
         completionData: {
             code: {

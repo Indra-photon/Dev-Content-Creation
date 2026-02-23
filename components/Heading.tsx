@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import { twMerge } from "tailwind-merge";
 
 const CalSans = localFont({
-  src: [{ path: "../../fonts/CalSans-SemiBold.woff2" }],
+  src: [{ path: "../fonts/CalSans-SemiBold.woff2" }],
   display: "swap",
 });
 
