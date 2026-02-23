@@ -103,13 +103,13 @@ export default function WeeklyGoalDetailPage() {
   }
 
   const typeColors = {
-    learning: 'bg-blue-100 text-blue-700 border-blue-200',
-    product: 'bg-violet-100 text-violet-700 border-violet-200',
+    learning: 'bg-stone-100 text-stone-700 border-stone-200',
+    product: 'bg-neutral-100 text-neutral-700 border-neutral-200',
   };
 
   const statusColors = {
-    active: 'bg-green-100 text-green-700',
-    complete: 'bg-gray-100 text-gray-700',
+    active: 'bg-stone-100 text-stone-700',
+    complete: 'bg-stone-100 text-stone-700',
   };
 
   // Create array of all 7 days
@@ -120,7 +120,7 @@ export default function WeeklyGoalDetailPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Back Button */}
       <Button
         variant="ghost"
@@ -143,10 +143,10 @@ export default function WeeklyGoalDetailPage() {
                 {goal.status === 'complete' ? '✓ Complete' : '○ Active'}
               </Badge>
             </div>
-            <Heading as="h1" className="text-gray-900 mb-2">
+            <Heading as="h1" className="text-stone-900 mb-2">
               {goal.title}
             </Heading>
-            <div className="flex items-center gap-4 text-gray-500">
+            <div className="flex items-center gap-4 text-stone-500">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <Paragraph variant="small">
@@ -175,15 +175,15 @@ export default function WeeklyGoalDetailPage() {
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Paragraph variant="small" className="text-gray-600">
+            <Paragraph variant="small" className="text-stone-600">
               Overall Progress
             </Paragraph>
-            <Paragraph variant="small" className="font-semibold text-gray-900">
+            <Paragraph variant="small" className="font-semibold text-stone-900">
               {goal.taskStats.completed}/{goal.taskStats.total} tasks completed
             </Paragraph>
           </div>
           <Progress value={goal.taskStats.progress} className="h-3" />
-          <div className="flex gap-4 text-xs text-gray-500">
+          <div className="flex gap-4 text-xs text-stone-500">
             <span>Active: {goal.taskStats.active}</span>
             <span>Locked: {goal.taskStats.locked}</span>
             <span>Complete: {goal.taskStats.completed}</span>
@@ -207,21 +207,25 @@ export default function WeeklyGoalDetailPage() {
 
       {/* Daily Tasks */}
       <div>
-        <Heading as="h2" className="text-gray-900 text-2xl mb-4">
+        <Heading as="h2" className="text-stone-900 text-2xl mb-4">
           Daily Tasks
         </Heading>
-        <div className="grid gap-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
           {allDays.map(({ dayNumber, task }) => (
-            <DailyTaskCard
-              key={dayNumber}
-              task={task}
-              dayNumber={dayNumber}
-              onAddTask={task ? undefined : () => handleAddTask(dayNumber)}
-              onComplete={task?.status === 'active' ? () => handleComplete(task._id) : undefined}
-              onGenerateContent={
-                task?.status === 'complete' ? () => handleGenerateContent(task._id) : undefined
-              }
-            />
+            <div 
+              key={task?._id || `day-${dayNumber}`} 
+              className="min-w-[320px] snap-start"
+            >
+              <DailyTaskCard
+                task={task}
+                dayNumber={dayNumber}
+                onAddTask={task ? undefined : () => handleAddTask(dayNumber)}
+                onComplete={task?.status === 'active' ? () => handleComplete(task._id) : undefined}
+                onGenerateContent={
+                  task?.status === 'complete' ? () => handleGenerateContent(task._id) : undefined
+                }
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -240,16 +244,16 @@ export default function WeeklyGoalDetailPage() {
 
 function GoalDetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <Skeleton className="h-10 w-32" />
       <Card className="p-6">
         <Skeleton className="h-8 w-64 mb-4" />
         <Skeleton className="h-4 w-48 mb-6" />
         <Skeleton className="h-3 w-full" />
       </Card>
-      <div className="grid gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-4">
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Card key={i} className="p-6">
+          <Card key={i} className="p-6 min-w-[320px]">
             <Skeleton className="h-6 w-24" />
           </Card>
         ))}

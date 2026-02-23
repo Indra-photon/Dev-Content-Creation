@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'motion/react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,64 +48,81 @@ export default function DailyTaskCard({
     const canAdd = onAddTask !== undefined;
     
     return (
-      <Card className={`p-6 ${canAdd ? 'border-dashed bg-gray-50/50 hover:bg-gray-100/50 transition-colors' : 'border-2 border-gray-200 bg-gray-50'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${canAdd ? 'bg-gray-200' : 'bg-red-100'}`}>
-              {canAdd ? (
-                <Circle className="h-5 w-5 text-gray-400" />
-              ) : (
-                <Lock className="h-5 w-5 text-red-400" />
-              )}
+      <motion.div
+        layoutId={`task-slot-${dayNumber}`}
+        layout
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1],
+        }}
+        style={{ transformOrigin: 'center center' }}
+      >
+        <Card className={`p-6 ${canAdd ? 'border-dashed bg-stone-50/50 hover:bg-stone-100/50 transition-colors' : 'border-2 border-stone-200 bg-stone-50'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${canAdd ? 'bg-stone-200' : 'bg-stone-100'}`}>
+                {canAdd ? (
+                  <Circle className="h-5 w-5 text-stone-400" />
+                ) : (
+                  <Lock className="h-5 w-5 text-stone-400" />
+                )}
+              </div>
+              <div>
+                <Paragraph className="font-semibold text-stone-900">
+                  Day {dayNumber}
+                </Paragraph>
+                <Paragraph variant="small" className="text-stone-500">
+                  {canAdd ? 'Ready to create' : `Create Day ${dayNumber - 1} first`}
+                </Paragraph>
+              </div>
             </div>
-            <div>
-              <Paragraph className="font-semibold text-gray-900">
-                Day {dayNumber}
-              </Paragraph>
-              <Paragraph variant="small" className="text-gray-500">
-                {canAdd ? 'Ready to create' : `Create Day ${dayNumber - 1} first`}
-              </Paragraph>
-            </div>
+            {canAdd ? (
+              <Button 
+                onClick={onAddTask} 
+                variant="outline" 
+                className="gap-2 focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
+                aria-label={`Add task for day ${dayNumber}`}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Task
+              </Button>
+            ) : (
+              <Badge variant="outline" className="bg-stone-50 text-stone-600 border-stone-200">
+                Blocked
+              </Badge>
+            )}
           </div>
-          {canAdd ? (
-            <Button onClick={onAddTask} variant="outline" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Task
-            </Button>
-          ) : (
-            <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-              Blocked
-            </Badge>
-          )}
-        </div>
-      </Card>
+        </Card>
+      </motion.div>
     );
   }
 
   const statusConfig = {
     locked: {
       icon: Lock,
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-100',
-      borderColor: 'border-gray-200',
+      color: 'text-stone-400',
+      bgColor: 'bg-stone-100',
+      borderColor: 'border-stone-200',
       badge: 'Locked',
-      badgeClass: 'bg-gray-100 text-gray-600',
+      badgeClass: 'bg-stone-100 text-stone-600',
     },
     active: {
       icon: Circle,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-      borderColor: 'border-blue-200',
+      color: 'text-neutral-700',
+      bgColor: 'bg-neutral-100',
+      borderColor: 'border-neutral-300',
       badge: 'Active',
-      badgeClass: 'bg-blue-100 text-blue-600',
+      badgeClass: 'bg-neutral-100 text-neutral-700',
     },
     complete: {
       icon: CheckCircle2,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-      borderColor: 'border-green-200',
+      color: 'text-stone-700',
+      bgColor: 'bg-stone-100',
+      borderColor: 'border-stone-300',
       badge: 'Complete',
-      badgeClass: 'bg-green-100 text-green-600',
+      badgeClass: 'bg-stone-100 text-stone-700',
     },
   };
 
@@ -112,91 +130,112 @@ export default function DailyTaskCard({
   const StatusIcon = config.icon;
 
   return (
-    <Card className={`p-6 border-2 ${config.borderColor} transition-all`}>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start gap-3 flex-1">
-          <div className={`p-2 rounded-full ${config.bgColor}`}>
-            <StatusIcon className={`h-5 w-5 ${config.color}`} />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Paragraph className="font-semibold text-gray-900">
-                Day {task.dayNumber}
-              </Paragraph>
-              <Badge variant="outline" className={config.badgeClass}>
-                {config.badge}
-              </Badge>
+    <motion.div
+      layoutId={`task-card-${task._id}`}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.3,
+        ease: [0.4, 0, 0.2, 1],
+      }}
+      style={{ transformOrigin: 'top center' }}
+    >
+      <Card className={`p-6 border ${config.borderColor} transition-all hover:shadow-sm`}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start gap-3 flex-1">
+            <div className={`p-2 rounded-full ${config.bgColor}`}>
+              <StatusIcon className={`h-5 w-5 ${config.color}`} />
             </div>
-            <Paragraph className="text-gray-700">
-              {task.description}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Paragraph className="font-semibold text-stone-900">
+                  Day {task.dayNumber}
+                </Paragraph>
+                <Badge variant="outline" className={config.badgeClass}>
+                  {config.badge}
+                </Badge>
+              </div>
+              <Paragraph className="text-stone-700">
+                {task.description}
+              </Paragraph>
+            </div>
+          </div>
+        </div>
+
+        {/* Resources */}
+        {task.resources && task.resources.length > 0 && (
+          <div className="mb-4">
+            <Paragraph variant="small" className="text-stone-500 mb-2">
+              Resources ({task.resources.length})
+            </Paragraph>
+            <div className="space-y-1">
+              {task.resources.map((resource, idx) => (
+                <a
+                  key={idx}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-stone-600 hover:text-stone-800 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {resource.title || resource.url}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Locked Message */}
+        {task.status === 'locked' && (
+          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200">
+            <Paragraph variant="small" className="text-stone-600">
+              🔒 Complete Day {task.dayNumber - 1} to unlock this task
             </Paragraph>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Resources */}
-      {task.resources && task.resources.length > 0 && (
-        <div className="mb-4">
-          <Paragraph variant="small" className="text-gray-500 mb-2">
-            Resources ({task.resources.length})
-          </Paragraph>
-          <div className="space-y-1">
-            {task.resources.map((resource, idx) => (
-              <a
-                key={idx}
-                href={resource.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {resource.title || resource.url}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Locked Message */}
-      {task.status === 'locked' && (
-        <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
-          <Paragraph variant="small" className="text-gray-600">
-            🔒 Complete Day {task.dayNumber - 1} to unlock this task
-          </Paragraph>
-        </div>
-      )}
-
-      {/* Active Actions */}
-      {task.status === 'active' && onComplete && (
-        <div className="pt-4 border-t">
-          <Button onClick={onComplete} className="w-full gap-2">
-            <CheckCircle2 className="h-4 w-4" />
-            Mark Complete
-          </Button>
-        </div>
-      )}
-
-      {/* Complete Actions */}
-      {task.status === 'complete' && (
-        <div className="space-y-3 pt-4 border-t">
-          <div className="flex items-center gap-2 text-green-600">
-            <Calendar className="h-4 w-4" />
-            <Paragraph variant="small">
-              Completed {new Date(task.completionData!.completedAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </Paragraph>
-          </div>
-          {onGenerateContent && (
-            <Button onClick={onGenerateContent} variant="outline" className="w-full gap-2">
-              ✨ Generate Content
+        {/* Active Actions */}
+        {task.status === 'active' && onComplete && (
+          <div className="pt-4 border-t">
+            <Button 
+              onClick={onComplete} 
+              className="w-full gap-2 focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
+              aria-label={`Mark day ${dayNumber} task as complete`}
+            >
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              Mark Complete
             </Button>
-          )}
-        </div>
-      )}
-    </Card>
+          </div>
+        )}
+
+        {/* Complete Actions */}
+        {task.status === 'complete' && (
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center gap-2 text-stone-600">
+              <Calendar className="h-4 w-4" />
+              <Paragraph variant="small">
+                Completed {new Date(task.completionData!.completedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </Paragraph>
+            </div>
+            {onGenerateContent && (
+              <Button 
+                onClick={onGenerateContent} 
+                variant="outline" 
+                className="w-full gap-2 focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
+                aria-label={`Generate content for day ${dayNumber} task`}
+              >
+                ✨ Generate Content
+              </Button>
+            )}
+          </div>
+        )}
+      </Card>
+    </motion.div>
   );
 }

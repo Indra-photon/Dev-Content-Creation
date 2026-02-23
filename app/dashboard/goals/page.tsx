@@ -121,7 +121,7 @@ function TasksPageSkeleton() {
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-5 w-96 mt-2" />
       </div>
-      <div className="grid gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
         {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i} className="p-6">
             <div className="flex items-center gap-4">
