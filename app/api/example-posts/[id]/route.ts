@@ -17,69 +17,46 @@ export async function PUT(
             );
         }
 
-        const { id } = params;
         const { type, platform, content } = await request.json();
 
-        await dbConnect();
-
-        // Find the example post and verify ownership
-        const examplePost = await ExamplePostModel.findOne({
-            _id: id,
-            clerk_id: userId
-        });
-
-        if (!examplePost) {
+        // Validate required fields
+        if (!type || !platform || !content) {
             return NextResponse.json(
-                { error: 'Example post not found or unauthorized' },
-                { status: 404 }
+                { error: 'Missing required fields: type, platform, content' },
+                { status: 400 }
             );
         }
 
-        // Validate if type or platform is being changed
-        if (type && !['learning', 'product'].includes(type)) {
+        // Validate enum values
+        if (!['learning', 'product'].includes(type)) {
             return NextResponse.json(
                 { error: 'Invalid type. Must be "learning" or "product"' },
                 { status: 400 }
             );
         }
 
-        if (platform && !['x', 'linkedin', 'blog'].includes(platform)) {
+        if (!['x', 'linkedin', 'blog'].includes(platform)) {
             return NextResponse.json(
                 { error: 'Invalid platform. Must be "x", "linkedin", or "blog"' },
                 { status: 400 }
             );
         }
 
-        // If changing type or platform, check the 2-per-type-per-platform limit
-        if ((type && type !== examplePost.type) || (platform && platform !== examplePost.platform)) {
-            const newType = type || examplePost.type;
-            const newPlatform = platform || examplePost.platform;
+        await dbConnect();
 
-            const existingCount = await ExamplePostModel.countDocuments({
-                clerk_id: userId,
-                type: newType,
-                platform: newPlatform,
-                _id: { $ne: id } // Exclude current document
-            });
-
-            if (existingCount >= 2) {
-                return NextResponse.json(
-                    { error: `Maximum 2 example posts allowed for ${newType} on ${newPlatform}` },
-                    { status: 400 }
-                );
-            }
-        }
-
-        // Update the example post
-        const updatedPost = await ExamplePostModel.findByIdAndUpdate(
-            id,
-            {
-                ...(type && { type }),
-                ...(platform && { platform }),
-                ...(content && { content })
-            },
-            { new: true, runValidators: true }
+        // Find and update the example post, ensuring it belongs to the user
+        const updatedPost = await ExamplePostModel.findOneAndUpdate(
+            { _id: params.id, clerk_id: userId },
+            { type, platform, content },
+            { new: true }
         );
+
+        if (!updatedPost) {
+            return NextResponse.json(
+                { error: 'Example post not found or unauthorized' },
+                { status: 404 }
+            );
+        }
 
         return NextResponse.json({
             success: true,
@@ -109,13 +86,11 @@ export async function DELETE(
             );
         }
 
-        const { id } = params;
-
         await dbConnect();
 
-        // Find and delete the example post (verify ownership)
+        // Find and delete the example post, ensuring it belongs to the user
         const deletedPost = await ExamplePostModel.findOneAndDelete({
-            _id: id,
+            _id: params.id,
             clerk_id: userId
         });
 

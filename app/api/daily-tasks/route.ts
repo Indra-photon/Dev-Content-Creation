@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import DailyTaskModel from '@/app/api/models/DailyTaskModel';
 import WeeklyGoalModel from '@/app/api/models/WeeklyGoalModel';
+import { getOrCreateWeekForTask, getNextTaskNumber, canCreateNextTask } from '@/lib/weekHelpers';
 
 export async function POST(request: Request) {
     try {
@@ -15,97 +16,75 @@ export async function POST(request: Request) {
             );
         }
 
-        const { weeklyGoalId, description, resources } = await request.json();
+        const { description, resources, type, scheduledDate } = await request.json();
 
         // Validate required fields
-        if (!weeklyGoalId || !description) {
+        if (!description || !type) {
             return NextResponse.json(
-                { error: 'Missing required fields: weeklyGoalId, description' },
+                { error: 'Missing required fields: description, type' },
+                { status: 400 }
+            );
+        }
+
+        if (!['learning', 'product'].includes(type)) {
+            return NextResponse.json(
+                { error: 'Invalid type. Must be "learning" or "product"' },
                 { status: 400 }
             );
         }
 
         await dbConnect();
 
-        // Verify weekly goal exists and belongs to user
-        const weeklyGoal = await WeeklyGoalModel.findOne({
-            _id: weeklyGoalId,
-            clerk_id: userId
-        });
-
-        if (!weeklyGoal) {
+        // Check if user can create next task
+        const canCreate = await canCreateNextTask(userId);
+        if (!canCreate.canCreate) {
             return NextResponse.json(
-                { error: 'Weekly goal not found or unauthorized' },
-                { status: 404 }
-            );
-        }
-
-        // Check if week is already complete
-        if (weeklyGoal.status === 'complete') {
-            return NextResponse.json(
-                { error: 'Cannot add tasks to a completed weekly goal' },
+                { 
+                    error: canCreate.reason,
+                    lastTask: canCreate.lastTask
+                },
                 { status: 400 }
             );
         }
 
-        // Count existing tasks for this week
-        const existingTasksCount = await DailyTaskModel.countDocuments({
-            weeklyGoalId
-        });
+        // Get next task number
+        const taskNumber = await getNextTaskNumber(userId);
 
-        // Check max limit (7 tasks per week)
-        if (existingTasksCount >= 7) {
-            return NextResponse.json(
-                { error: 'Maximum 7 tasks per week. This week is full.' },
-                { status: 400 }
-            );
-        }
+        // Get or create weekly goal (auto-managed)
+        const weeklyGoal = await getOrCreateWeekForTask(userId, taskNumber, type);
 
-        // Determine the day number (sequential)
-        const dayNumber = existingTasksCount + 1;
+        // Determine day number within the week
+        const dayNumber = ((taskNumber - 1) % 7) + 1;
 
-        // Get the previous day's task to check if it exists and is complete
-        if (dayNumber > 1) {
-            const previousTask = await DailyTaskModel.findOne({
-                weeklyGoalId,
-                dayNumber: dayNumber - 1
-            });
-
-            if (!previousTask) {
-                return NextResponse.json(
-                    { error: `You must create Day ${dayNumber - 1} before creating Day ${dayNumber}` },
-                    { status: 400 }
-                );
-            }
-
-            // Note: We don't check if previous task is complete for CREATION
-            // We only check completion status for UNLOCKING (which happens on completion)
-        }
-
-        // Determine initial status
-        // Day 1 is always active, Day 2-7 start as locked
+        // Determine initial status (Day 1 of any week is active, rest are locked)
         const initialStatus = dayNumber === 1 ? 'active' : 'locked';
+
+        // Use provided date or default to today
+        const taskDate = scheduledDate ? new Date(scheduledDate) : new Date();
 
         // Create the daily task
         const dailyTask = await DailyTaskModel.create({
-            weeklyGoalId,
+            weeklyGoalId: weeklyGoal._id,
             dayNumber,
             description,
             resources: resources || [],
-            status: initialStatus
+            status: initialStatus,
+            scheduledDate: taskDate,
         });
 
         // Add task reference to weekly goal
         await WeeklyGoalModel.findByIdAndUpdate(
-            weeklyGoalId,
-            {
-                $push: { dailyTasks: dailyTask._id }
-            }
+            weeklyGoal._id,
+            { $push: { dailyTasks: dailyTask._id } }
         );
 
         return NextResponse.json({
             success: true,
-            data: dailyTask
+            data: {
+                ...dailyTask.toObject(),
+                taskNumber,
+                goalType: type,
+            }
         }, { status: 201 });
 
     } catch (error) {
