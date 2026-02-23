@@ -345,3 +345,33 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Keyboard focus styles for accessibility */
+.focus-visible:focus {
+  outline: 2px solid hsl(var(--stone-400));
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid hsl(var(--stone-400));
+  outline-offset: 2px;
+  border-color: hsl(var(--stone-500));
+}
+
+/* Keyboard shortcut styling */
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
